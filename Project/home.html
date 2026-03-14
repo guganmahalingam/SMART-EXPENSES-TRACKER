@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Budget Planner - Home</title>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(120deg, #e3f2fd, #ffffff);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  header {
+    background: #1565c0;
+    color: white;
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  header h1 { margin: 0; font-size: 22px; }
+  .menu select, .menu button {
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin-left: 8px;
+    font-size: 14px;
+  }
+  .menu button {
+    background: #42a5f5;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  .menu button:hover { background: #1e88e5; }
+  .container {
+    max-width: 950px;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 25px;
+  }
+  .intro { text-align: center; margin-bottom: 25px; }
+  .intro h2 { color: #0d47a1; margin-bottom: 10px; }
+  .intro p { color: #444; font-size: 15px; }
+  .analysis {
+    border: 2px dashed #2196f3;
+    padding: 20px;
+    text-align: center;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    background: #f9fbff;
+  }
+  .analysis input[type="file"] { margin: 10px 0; }
+  .analysis button {
+    background: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  .analysis button:hover { background: #0d47a1; }
+  .category {
+    background: #f9f9f9;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+  }
+  .category-header {
+    background: #e3f2fd;
+    padding: 10px 15px;
+    font-weight: bold;
+    color: #0d47a1;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 6px 6px 0 0;
+  }
+  .category-content { display: none; padding: 15px; }
+  .item {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .item label { flex: 2; color: #333; }
+  .item input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .footer {
+    background: #0d47a1;
+    color: white;
+    text-align: center;
+    font-weight: bold;
+    padding: 14px;
+    border-radius: 0 0 10px 10px;
+  }
+  .nav-section {
+    text-align: center;
+    margin-top: 20px;
+  }
+  .nav-section button {
+    background: #42a5f5;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  .nav-section button:hover { background: #1565c0; }
+  .saved-budgets {
+    margin-top: 20px;
+    padding: 15px;
+    background: #e3f2fd;
+    border-radius: 8px;
+  }
+</style>
+</head>
+
+<body>
+<header>
+  <h1>Smart Budget Planner</h1>
+  <div class="menu">
+    <select id="viewMode">
+      <option>Annually</option>
+      <option>Monthly</option>
+      <option>Weekly</option>
+    </select>
+    <button id="helpBtn">Help</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="intro">
+    <h2>Welcome to Your Smart Expense Tracker 💰</h2>
+    <p>Upload your statement (CSV) to auto-fill income & expense categories. Both visible, but counted correctly.</p>
+  </div>
+
+  <div class="analysis">
+    <h3>📤 Upload Statement for Auto Analysis</h3>
+    <input type="file" id="fileUpload" accept=".csv"><br>
+    <button id="analyzeBtn">Analyze Upload</button>
+    <p id="analysisResult" style="margin-top:10px; color:#0d47a1; font-weight:bold;">Awaiting file...</p>
+  </div>
+
+  <div id="categories"></div>
+  <div class="footer" id="summary">Summary: $0</div>
+
+  <div class="nav-section">
+    <a href="piechart.html"><button id="nextPage">➡ Go to Pie Chart</button></a>
+  </div>
+</div>
+<div class="saved-budgets">
+  <h3>📘 Saved Budget History</h3>
+  <p id="noHistoryMsg" style="color:#444;">No saved budgets yet.</p>
+  <div id="historyList"></div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+// ✅ Full detailed categories integrated
+const categories = {
+  "Income": [
+    "Your take-home pay", "Your partner’s take-home pay", "Bonuses & overtime",
+    "Income from savings & investments", "Family benefits payments", "Child supports", "Others"
+  ],
+  "Home & utilities": [
+    "Mortgage & rent", "Body corporate fees", "Council rates", "Furniture & appliances",
+    "Renovations & maintenance", "Electricity", "Gas", "Water", "Internet",
+    "Pay TV", "Home phone", "Mobile", "Others"
+  ],
+  "Insurance & financial": [
+    "Car insurance", "Home & contents insurance", "Personal & life insurance", "Health insurance",
+    "Car loan", "Credit card interest", "Other loan", "Paying off debt", "Savings",
+    "Investments & super contributions", "Charity donations", "Other"
+  ],
+  "Groceries": [
+    "Supermarket", "Butcher", "Fruit & veg market", "Fish shop",
+    "Deli & bakery", "Pet food", "Other"
+  ],
+  "Personal & medical": [
+    "Cosmetics & toiletries", "Hair & beauty", "Medicines & pharmacy", "Glasses & eye care",
+    "Dental", "Doctor & medicine", "Hobbies", "Clothing & shoes", "Jewellary & accessories",
+    "Computers & gadgets", "Sports & gym", "Education", "Pet care & vet", "Other"
+  ],
+  "Entertainment & eat-out": [
+    "Coffee & tea", "Lunch-bought", "Take-away & snacks", "Cigarettes", "Drinks & alcohol",
+    "Bars & clubs", "Restaurants", "Books", "Newspaper & magazines", "Movies & music",
+    "Holidays", "Celebrations & gift", "Other"
+  ],
+  "Transport & auto": [
+    "Bus, trains & ferry", "Petrol", "Road tolls & parking", "Rego & license",
+    "Repair & maintenance", "Fines", "Airfares", "Other"
+  ],
+  "Children": [
+    "Baby products", "Toys", "Babysitting", "Childcare", "Sports & activities",
+    "School fees", "Excursions", "School uniforms", "Other school needs",
+    "Child support payment", "Other"
+  ]
+};
+
+const keywordMapping = {
+  "Income": ["salary", "bonus", "credit", "refund"],
+  "Home & utilities": ["rent", "electricity", "wifi", "mobile", "water", "internet"],
+  "Groceries": ["supermarket", "market", "store", "grocery"],
+  "Entertainment & eat-out": ["movie", "restaurant", "netflix", "snack", "bar", "alcohol"],
+  "Transport & auto": ["uber", "bus", "train", "fuel", "petrol", "parking"],
+  "Insurance & financial": ["insurance", "loan", "emi", "interest", "investment"],
+  "Personal & medical": ["doctor", "hospital", "medicine", "pharmacy", "gym", "beauty"],
+  "Children": ["school", "toy", "childcare", "fees", "baby"]
+};
+
+const container = document.getElementById("categories");
+Object.keys(categories).forEach(cat => {
+  const div = document.createElement("div");
+  div.className = "category";
+  div.innerHTML = `
+    <div class="category-header">
+      <span>${cat}</span>
+      <span><span class="total">$0</span> <span class="arrow">&#9654;</span></span>
+    </div>
+    <div class="category-content">
+      ${categories[cat].map(item => `
+        <div class="item">
+          <label>${item}</label>
+          <input type="number" class="amountInput" placeholder="0" />
+        </div>
+      `).join("")}
+    </div>`;
+  container.appendChild(div);
+});
+
+document.querySelectorAll(".category-header").forEach(header => {
+  header.addEventListener("click", () => {
+    const content = header.nextElementSibling;
+    const arrow = header.querySelector(".arrow");
+    const open = content.style.display === "block";
+    content.style.display = open ? "none" : "block";
+    arrow.innerHTML = open ? "&#9654;" : "&#9660;";
+  });
+});
+
+let uploadedCredit = 0, uploadedDebit = 0, csvUploaded = false;
+let savedData = {};
+
+function calculateTotals() {
+  let income = 0, expenses = 0;
+  document.querySelectorAll(".category").forEach(cat => {
+    const name = cat.querySelector(".category-header span").innerText;
+    let total = 0;
+    cat.querySelectorAll(".amountInput").forEach(i => total += Number(i.value) || 0);
+    cat.querySelector(".total").textContent = "$" + total.toFixed(2);
+    if (name === "Income") {
+      income = csvUploaded ? uploadedCredit : total;
+    } else {
+      if (!csvUploaded) expenses += total;
+    }
+    savedData[name] = total;
+  });
+  if (csvUploaded) expenses += uploadedDebit;
+  const remaining = income - expenses;
+  document.getElementById("summary").textContent =
+    `Income: $${income.toFixed(2)} | Expenses: $${expenses.toFixed(2)} | Remaining: $${remaining.toFixed(2)}`;
+  savedData["Total Income"] = income;
+  savedData["Total Expenses"] = expenses;
+}
+
+document.addEventListener("input", e => {
+  if (e.target.classList.contains("amountInput")) calculateTotals();
+});
+
+// CSV analysis
+document.getElementById("analyzeBtn").addEventListener("click", () => {
+  const file = document.getElementById("fileUpload").files[0];
+  const result = document.getElementById("analysisResult");
+  if (!file) return alert("Please upload a CSV file first!");
+  result.textContent = "Analyzing...";
+  Papa.parse(file, {
+    header: true,
+    complete: function (res) {
+      let credit = 0, debit = 0;
+      const categoryTotals = {};
+      res.data.forEach(row => {
+        const desc = (row["Description"] || row["Narration"] || "").toLowerCase();
+        const type = row["Type"]?.toLowerCase();
+        const amt = parseFloat(row["Amount"]) || 0;
+        let matched = "Other";
+        for (const [cat, words] of Object.entries(keywordMapping)) {
+          if (words.some(w => desc.includes(w))) {
+            matched = cat;
+            break;
+          }
+        }
+        if (type === "credit" || matched === "Income") {
+          credit += amt;
+          categoryTotals["Income"] = (categoryTotals["Income"] || 0) + amt;
+        } else {
+          debit += amt;
+          categoryTotals[matched] = (categoryTotals[matched] || 0) + amt;
+        }
+      });
+      uploadedCredit = credit;
+      uploadedDebit = debit;
+      csvUploaded = true;
+      for (const [cat, total] of Object.entries(categoryTotals)) {
+        const catDiv = Array.from(document.querySelectorAll(".category"))
+          .find(c => c.querySelector(".category-header span").innerText === cat);
+        if (catDiv) {
+          const firstInput = catDiv.querySelector(".amountInput");
+          if (firstInput) firstInput.value = total.toFixed(2);
+        }
+      }
+      calculateTotals();
+      result.textContent = `✅ Analysis done! Income & expenses visible but counted once.`;
+    }
+  });
+});
+
+document.getElementById("nextPage").addEventListener("click", () => {
+  calculateTotals();
+  sessionStorage.setItem("budgetData", JSON.stringify(savedData));
+  alert("Data saved. Redirecting to next page...");
+});
+function loadSavedBudgets() {
+  const list = document.getElementById("historyList");
+  const msg = document.getElementById("noHistoryMsg");
+
+  let history = JSON.parse(localStorage.getItem("savedBudgets") || "[]");
+
+  if (history.length === 0) {
+    msg.style.display = "block";
+    return;
+  }
+
+  msg.style.display = "none";
+  list.innerHTML = "";
+
+  history.forEach(item => {
+    const box = document.createElement("div");
+    box.style.background = "#fff";
+    box.style.padding = "12px";
+    box.style.margin = "10px 0";
+    box.style.borderRadius = "8px";
+    box.style.borderLeft = "4px solid #0d47a1";
+    box.style.boxShadow = "0 1px 4px rgba(0,0,0,0.1)";
+    
+    box.innerHTML = `
+      <strong>📌 ${item.projectName}</strong><br>
+      <span style="font-size:13px;color:#555;">${item.date}</span><br>
+      <strong>Total Saved:</strong> $${item.totalSaved}<br>
+      <strong>Target:</strong> $${item.targetSavings}<br><br>
+
+      <button onclick="deleteBudget(${item.id})" 
+        style="background:#e53935;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;">
+        Delete
+      </button>
+    `;
+
+    list.appendChild(box);
+  });
+}
+
+function deleteBudget(id) {
+  let history = JSON.parse(localStorage.getItem("savedBudgets") || "[]");
+  history = history.filter(h => h.id !== id);
+  localStorage.setItem("savedBudgets", JSON.stringify(history));
+  loadSavedBudgets();
+}
+
+
+// Load history when page opens
+window.onload = loadSavedBudgets;
+</script>
+</body>
+</html>

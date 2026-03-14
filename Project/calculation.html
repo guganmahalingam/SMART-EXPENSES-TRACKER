@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Budget Planner - Merge</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(120deg,#f0f8ff,#ffffff);
+      margin:0; padding:0 10px 40px;
+    }
+    header {
+      background:#004aad; color:white; padding:12px 16px;
+      display:flex; align-items:center; gap:12px;
+    }
+    header a { color:white; text-decoration:none; font-weight:600; }
+    header h2 { margin:0; flex-grow:1; text-align:center; font-size:18px; }
+    .main { max-width:1200px; margin:24px auto;
+      display:grid; grid-template-columns: 370px 1fr; gap:20px; align-items:start; }
+    .card {
+      background:white; border-radius:12px; padding:16px;
+      box-shadow:0 6px 18px rgba(3,18,46,0.06);
+    }
+    .left .form-group { margin-bottom:12px; }
+    label { display:block; margin-bottom:6px; font-weight:600; font-size:14px; }
+    select,input,button {
+      width:100%; padding:10px; font-size:14px;
+      border-radius:8px; border:1px solid #d0d7e0; box-sizing:border-box;
+    }
+    button.primary { background:#004aad; color:white; border:none; cursor:pointer; margin-top:6px; }
+    button.secondary { background:#fff; color:#004aad; border:1px solid #004aad; margin-top:6px; cursor:pointer; }
+    .small-btns { display:flex; gap:8px; margin-top:12px; }
+    #chartWrap { margin-bottom:18px; display:none; }
+    canvas { width:100% !important; height:380px !important; }
+    .suggestions-list { margin-top:12px; display:none; }
+    .category-card {
+      background:#f9fbff; border-left:6px solid #0078d7;
+      padding:12px; border-radius:10px; margin-bottom:10px;
+    }
+    .category-card h3 { margin:0 0 6px 0; color:#0078d7; font-size:16px; }
+    .meta { font-size:13px; color:#333; margin:4px 0; }
+    .savings-idea { margin-top:6px; font-size:13px; color:#0b3b66; }
+    #reductions {
+      margin-top:12px; background:#eaf6ff; padding:12px;
+      border-radius:8px; white-space:pre-line; font-size:14px;
+      line-height:1.5; display:none;
+    }
+    @media (max-width:980px){ .main{ grid-template-columns:1fr; } }
+    #reportModal {
+      display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.4); z-index:999;
+      justify-content:center; align-items:center;
+    }
+    #reportContent {
+      background:white; padding:20px; border-radius:12px;
+      width:90%; max-width:700px; max-height:80vh;
+      overflow:auto; box-shadow:0 4px 15px rgba(0,0,0,0.2);
+    }
+    #reportContent h3 { margin-top:0; color:#004aad; text-align:center; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { padding:8px; border-bottom:1px solid #ddd; text-align:center; font-size:14px; }
+    th { background:#f0f4ff; }
+    #closeReport {
+      margin-top:12px; background:#004aad; color:white;
+      border:none; padding:8px 12px; border-radius:6px;
+      cursor:pointer; float:right;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="home.html">&#8592;</a>
+  <h2>Smart Budget Planner - Combined</h2>
+</header>
+
+<div class="main">
+
+  <!-- Left Section -->
+  <div class="card left">
+    <h3>Budget Saving Options</h3>
+
+    <div class="form-group">
+      <label>I want to save:</label>
+      <select id="goalType">
+        <option value="">-- choose option --</option>
+        <option value="max">As much as possible (percentage of income)</option>
+        <option value="amount">A specific amount</option>
+      </select>
+    </div>
+
+    <div id="percentDiv" class="form-group" style="display:none;">
+      <label>Enter percentage of income to save (%):</label>
+      <input type="number" id="percent" placeholder="e.g. 20" />
+    </div>
+
+    <div id="amountDiv" class="form-group" style="display:none;">
+      <label>Enter the amount you want to save (₹):</label>
+      <input type="number" id="targetAmount" placeholder="e.g. 50000" />
+    </div>
+
+    <div class="form-group">
+      <label>Years:</label>
+      <input type="number" id="years" placeholder="e.g. 5" />
+    </div>
+
+    <div class="form-group">
+      <label>Time frame:</label>
+      <select id="timeFrame">
+        <option value="yearly">Yearly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Project Name:</label>
+      <input type="text" id="projectName" placeholder="e.g. My Budget 2025" />
+    </div>
+
+    <button class="primary" id="calcBtn">Calculate</button>
+    <div class="small-btns">
+      <button class="secondary" id="reportBtn">Report</button>
+      <button class="secondary" id="saveBtn">Save Budget</button>
+    </div>
+
+    <div id="note" style="font-size:13px;color:#555;margin-top:10px;">
+      Note: Calculator reads budget from <strong>sessionStorage.budgetData</strong>.  
+      If none found, a sample dataset is used so you can test.
+    </div>
+
+    <div id="reductions"></div>
+  </div>
+
+  <!-- Right Section -->
+  <div class="card right">
+    <div id="chartWrap"><canvas id="budgetChart"></canvas></div>
+
+    <h3 style="margin-top:6px;">Category-wise Suggestions & Reductions</h3>
+    <div id="suggestionSection" class="suggestions-list"></div>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal">
+  <div id="reportContent">
+    <h3>📊 Budget Report</h3>
+    <div id="reportTable"></div>
+    <button id="closeReport">Close</button>
+  </div>
+</div>
+
+<script>
+const sampleBudgetData = {
+  "Entertainment": 8000,
+  "Food": 10000,
+  "Transportation": 6000,
+  "Healthcare": 7000,
+  "Utilities": 4000,
+  "Shopping": 9000,
+  "Total Income": 50000,
+  "Total Expense": 44000
+};
+
+const goalTypeEl = document.getElementById('goalType');
+goalTypeEl.addEventListener('change', () => {
+  document.getElementById('percentDiv').style.display =
+    goalTypeEl.value === "max" ? "block" : "none";
+  document.getElementById('amountDiv').style.display =
+    goalTypeEl.value === "amount" ? "block" : "none";
+});
+
+/* ⭐ UPDATED REDUCTION LOGIC — Improved professional reasons */
+function calculateReductions(expenses) {
+  const adjusted = {...expenses};
+  const reductionDetails = [];
+
+  Object.keys(adjusted).forEach(cat => {
+    const catLower = cat.toLowerCase();
+    if (catLower.includes("income") || catLower.includes("total expense")) return;
+
+    const value = Number(adjusted[cat]);
+    if (!isFinite(value) || value <= 0) return;
+
+    let reductionPercent = 0, reason = "";
+
+    if (catLower.includes("health")) {
+      reductionPercent = 0;
+      reason = "Healthcare is a priority and cannot be reduced without affecting essential well-being. It remains fully allocated.";
+    }
+    else if (catLower.includes("entertainment")) {
+      reductionPercent = 0.30;
+      reason = "Entertainment expenses are flexible. Reducing premium subscriptions and limiting outings can meaningfully cut non-essential costs.";
+    }
+    else if (catLower.includes("food")) {
+      reductionPercent = 0.12;
+      reason = "Optimizing food spending through meal planning and reducing outside food orders can help manage costs without affecting nutrition.";
+    }
+    else if (catLower.includes("shopping")) {
+      reductionPercent = 0.15;
+      reason = "Shopping often includes discretionary purchases. Setting monthly limits and avoiding impulse buys can reduce unnecessary spending.";
+    }
+    else if (catLower.includes("transport")) {
+      reductionPercent = 0.10;
+      reason = "Transportation costs can be reduced by choosing fuel-efficient routes, carpooling, or using public travel options when possible.";
+    }
+    else if (catLower.includes("utilities")) {
+      reductionPercent = 0.08;
+      reason = "Improving electricity and water usage efficiency helps lower bills. Small daily adjustments significantly impact monthly expenses.";
+    }
+    else {
+      reductionPercent = 0.05;
+      reason = "A small general reduction is applied for minor categories to improve overall budget efficiency.";
+    }
+
+    const reducedAmount = +(value * reductionPercent);
+    const newAmount = +(value - reducedAmount);
+    adjusted[cat] = newAmount;
+
+    reductionDetails.push({
+      category: cat,
+      original: value,
+      reducedAmount,
+      reductionPercent: reductionPercent*100,
+      newAmount,
+      reason
+    });
+  });
+
+  return { adjusted, reductionDetails };
+}
+
+/* ⭐ UPDATED SUGGESTIONS — Detailed (Option B) */
+function suggestionForCategory(catName) {
+  const c = catName.toLowerCase();
+
+  if (c.includes("entertainment"))
+    return "Reduce paid OTT platforms and limit weekend outings. Consider more cost-effective alternatives like books, community events, or free online content.";
+
+  if (c.includes("food"))
+    return "Plan meals weekly and reduce frequent restaurant orders. Buying groceries in bulk and cooking at home can significantly lower food expenses.";
+
+  if (c.includes("transport"))
+    return "Use public transport or carpool during routine travel. Maintaining optimal tyre pressure and driving habits can also improve fuel efficiency.";
+
+  if (c.includes("health"))
+    return "Invest in preventive care such as regular workouts and balanced diet. Healthy routines reduce long-term medical expenses.";
+
+  if (c.includes("utilities"))
+    return "Switch off appliances when not in use and adopt energy-efficient devices. Monitoring electricity usage helps identify avoidable power consumption.";
+
+  if (c.includes("shopping"))
+    return "Create a monthly shopping list and avoid impulsive online purchases. Compare prices across stores and choose generic alternatives when possible.";
+
+  return "Review minor expenses and cancel unused services or subscriptions. Small adjustments can collectively increase monthly savings.";
+}
+
+let budgetChart = null;
+let lastReductionDetails = [];
+let lastSavingsGoal = 0;
+let lastTotalSaved = 0;
+
+/* Chart Rendering */
+function renderChart(categories, savingsGoal, totalIncome) {
+  const ctx = document.getElementById('budgetChart').getContext('2d');
+  if (budgetChart) budgetChart.destroy();
+
+  const labels = [...categories.map(c => c.name), "Target Savings"];
+  const beforeData = [...categories.map(c => c.before), 0];
+  const afterData = [...categories.map(c => c.after), 0];
+  const savingsData = [...categories.map(() => 0), savingsGoal];
+
+  budgetChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Before Reduction (₹)', data: beforeData, backgroundColor: 'rgba(255,99,132,0.6)' },
+        { label: 'After Reduction (₹)', data: afterData, backgroundColor: 'rgba(75,192,192,0.6)' },
+        { label: 'Target Savings (₹)', data: savingsData, backgroundColor: 'rgba(255,206,86,0.8)' }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' }, title: { display: true, text: `Budget Plan (Saving Target ₹${savingsGoal.toLocaleString()})` } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+/* Suggestion Cards UI */
+function renderSuggestionSection(details) {
+  const container = document.getElementById('suggestionSection');
+  container.innerHTML = '';
+
+  details.forEach(d => {
+    const saved = Math.round(d.reducedAmount);
+    const card = document.createElement('div');
+    card.className = 'category-card';
+
+    card.innerHTML = `
+      <h3>${d.category}</h3>
+      <div class="meta">Original: ₹${d.original.toLocaleString()} — After: ₹${d.newAmount.toLocaleString()}</div>
+      <div class="meta">Saved: ₹${saved.toLocaleString()}</div>
+      <div class="suggestions">💡 ${suggestionForCategory(d.category)}</div>
+      <div class="savings-idea">🏦 You can invest ₹${saved.toLocaleString()} in SIPs, RDs, or short-term funds.</div>
+      <div class="meta" style="margin-top:6px;color:#244;"><strong>Reason:</strong> ${d.reason}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function getBudgetData() {
+  try {
+    const raw = sessionStorage.getItem('budgetData');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return sampleBudgetData;
+}
+
+/* Calculation */
+function calculate() {
+  const type = goalTypeEl.value;
+  const years = parseInt(document.getElementById("years").value,10);
+  const project = document.getElementById("projectName").value.trim();
+  if (!years || !type || !project) return alert("Please fill all fields.");
+
+  const budgetData = getBudgetData();
+  const income = Number(budgetData["Total Income"] || 0);
+  if (income <= 0) return alert("No income data found.");
+
+  let savingsGoal;
+  if (type === "max") {
+    const pct = parseFloat(document.getElementById("percent").value);
+    if (!pct || pct <= 0) return alert("Enter a valid percentage.");
+    savingsGoal = income * pct / 100;
+  } else {
+    const amt = parseFloat(document.getElementById("targetAmount").value);
+    if (!amt || amt <= 0) return alert("Enter a valid amount.");
+    savingsGoal = amt;
+  }
+
+  const { adjusted, reductionDetails } = calculateReductions(budgetData);
+  lastReductionDetails = reductionDetails;
+  lastSavingsGoal = savingsGoal;
+
+  let totalSaved = reductionDetails.reduce((sum, d) => sum + d.reducedAmount, 0);
+  lastTotalSaved = totalSaved;
+
+  const reductionsDiv = document.getElementById("reductions");
+  let text = "📉 Reductions Applied:\n\n";
+  reductionDetails.forEach(d => {
+    text += `📂 ${d.category}: -₹${d.reducedAmount.toFixed(2)}\n`;
+  });
+  text += `\n💵 Total Reduction: ₹${totalSaved.toFixed(2)}\n💰 Target Savings: ₹${savingsGoal.toFixed(2)}\n\n💡 Save extra funds in SIP or FD.`;
+  reductionsDiv.innerText = text;
+
+  document.getElementById("chartWrap").style.display = "block";
+  document.getElementById("reductions").style.display = "block";
+  document.getElementById("suggestionSection").style.display = "block";
+
+  const categories = Object.keys(budgetData)
+    .filter(k => !k.toLowerCase().includes("income") && !k.toLowerCase().includes("total expense"))
+    .map(k => ({ name:k, before:budgetData[k], after:adjusted[k] }));
+
+  renderChart(categories, savingsGoal, income);
+  renderSuggestionSection(reductionDetails);
+
+  alert("Calculation complete — chart and unique suggestions displayed!");
+}
+
+/* Report Modal */
+function showReport() {
+  if (!lastReductionDetails.length) return alert("Please run a calculation first.");
+
+  let tableHTML = `<table>
+    <tr><th>Category</th><th>Original (₹)</th><th>After (₹)</th><th>Saved (₹)</th></tr>`;
+
+  lastReductionDetails.forEach(d=>{
+    tableHTML += `<tr>
+      <td>${d.category}</td>
+      <td>${d.original.toLocaleString()}</td>
+      <td>${d.newAmount.toLocaleString()}</td>
+      <td>${d.reducedAmount.toFixed(2)}</td>
+    </tr>`;
+  });
+
+  tableHTML += `</table>
+    <p style="text-align:center;margin-top:12px;font-weight:bold;">
+      💵 Total Saved: ₹${lastTotalSaved.toFixed(2)}<br>
+      💰 Target Savings: ₹${lastSavingsGoal.toFixed(2)}
+    </p>`;
+
+  document.getElementById("reportTable").innerHTML = tableHTML;
+  document.getElementById("reportModal").style.display = "flex";
+}
+
+document.getElementById("closeReport").addEventListener("click", ()=> {
+  document.getElementById("reportModal").style.display="none";
+});
+
+/* Save Budget */
+function saveBudget() {
+  if (!lastReductionDetails.length)
+    return alert("Please run a calculation first.");
+
+  const project = document.getElementById("projectName").value.trim();
+  if (!project)
+    return alert("Please enter a project name before saving.");
+
+  const record = {
+    id: Date.now(),
+    projectName: project,
+    date: new Date().toLocaleString(),
+    totalSaved: lastTotalSaved,
+    targetSavings: lastSavingsGoal,
+    categories: lastReductionDetails.map(d => ({
+      category: d.category,
+      original: d.original,
+      newAmount: d.newAmount,
+      saved: d.reducedAmount
+    }))
+  };
+
+  let history = JSON.parse(localStorage.getItem("savedBudgets") || "[]");
+  history.push(record);
+  localStorage.setItem("savedBudgets", JSON.stringify(history));
+
+  alert("Budget saved successfully ✔\nYou can view history on HOME page.");
+}
+
+document.getElementById('calcBtn').addEventListener('click', calculate);
+document.getElementById('reportBtn').addEventListener('click', showReport);
+document.getElementById('saveBtn').addEventListener('click', saveBudget);
+
+</script>
+</body>
+</html>

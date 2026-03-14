@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Breakdown - Pie Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    h2 {
+      color: #0d47a1;
+      margin: 10px 0 5px 0;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      margin: 0;
+      padding: 0;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    .next-steps {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 400px;
+      padding: 20px;
+      margin-top: 0;
+      text-align: left;
+    }
+
+    .next-steps h3 {
+      color: #0d47a1;
+      margin-top: 0;
+    }
+
+    .radio-section {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    label {
+      display: inline-block;
+      padding: 10px 25px;
+      margin: 8px;
+      border: 2px solid #007BFF;
+      border-radius: 8px;
+      color: #007BFF;
+      background-color: #fff;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    input[type="radio"] {
+      display: none;
+    }
+
+    input[type="radio"]:checked + label {
+      background-color: #007BFF;
+      color: #fff;
+    }
+
+    label:hover {
+      background-color: #007BFF22;
+    }
+
+    #backBtn {
+      background: #ffffff;
+      color: rgb(30, 35, 179);
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.3s;
+      margin: 10px;
+    }
+
+    #backBtn:hover {
+      background: #e3f2fd;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div style="width: 100%; text-align: left; margin-bottom: 20px;">
+    <button id="backBtn">⬅</button>
+  </div>
+
+  <div class="container">
+    <h2>Expense Breakdown</h2>
+    <div class="chart-container">
+      <canvas id="budgetPieChart"></canvas>
+    </div>
+
+    <div class="next-steps">
+      <h3>Next Step</h3>
+      <ul>
+        <li>Review which categories take up most of your spending.</li>
+        <li>Plan strategies to reduce non-essential costs.</li>
+      </ul>
+    </div>
+
+    <div class="radio-section">
+      <h3>Wanna Save Your Money Efficiently?</h3>
+      <form>
+        <input type="radio" id="yes" name="choice" value="yes">
+        <label for="yes">Yeah</label>
+        <input type="radio" id="no" name="choice" value="no">
+        <a href="Nope.html"><label for="no">Nope</label></a>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Get stored data from home page
+    const stored = sessionStorage.getItem('budgetData');
+    const budgetData = stored ? JSON.parse(stored) : {};
+
+    // ✅ Filter out Income-related and total entries
+    const expenseEntries = Object.entries(budgetData).filter(([key, value]) =>
+      key !== "Income" && key !== "Total Income" && key !== "Total Expenses"
+    );
+
+    // Convert filtered data back into labels and values
+    const expenseLabels = expenseEntries.map(([key]) => key);
+    const expenseValues = expenseEntries.map(([_, value]) => value);
+
+    // Create Pie Chart
+    const ctx = document.getElementById('budgetPieChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: expenseLabels,
+        datasets: [{
+          data: expenseValues,
+          backgroundColor: [
+            '#1565c0', '#42a5f5', '#90caf9', '#b3e5fc',
+            '#80cbc4', '#4db6ac', '#ffb74d', '#f06292',
+            '#ba68c8', '#64b5f6', '#81c784', '#ff8a65'
+          ],
+          borderColor: '#ffffff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              boxWidth: 15,
+              padding: 10
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const total = expenseValues.reduce((a, b) => a + b, 0);
+                const percent = ((context.raw / total) * 100).toFixed(1);
+                return `${context.label}: $${context.raw.toFixed(2)} (${percent}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Radio navigation
+    document.querySelector('input#yes').addEventListener('change', e => {
+      if (e.target.checked) window.location.href = 'calculation.html';
+    });
+       // ✅ Fixed Radio navigation logic
+    document.getElementById('yes').addEventListener('change', e => {
+      if (e.target.checked) window.location.href = 'calculation.html';
+    });
+
+    document.getElementById('no').addEventListener('change', e => {
+      if (e.target.checked) window.location.href = 'Nope.html';
+    });
+
+    // Back button
+    document.getElementById('backBtn').addEventListener('click', () => {
+      window.location.href = 'home.html';
+    });
+  </script>
+</body>
+</html>
